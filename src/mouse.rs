@@ -3,11 +3,12 @@ use bevy_mouse_tracking_plugin::MousePosWorld;
 
 use crate::{
     square::{Square, SquareCoordinates},
-    Counter, // Counter, MainCamera,
+    Counter,
 };
 
 #[derive(Component)]
-pub struct ClickDuration {
+pub struct Click {
+    pub offset: Vec2,
     pub time: Stopwatch,
 }
 
@@ -16,30 +17,14 @@ pub struct Holding(pub bool);
 
 pub fn handle_clicking(
     mut counter: ResMut<Counter>,
-    // windows: Res<Windows>,
     buttons: Res<Input<MouseButton>>,
-    // q_camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     time: Res<Time>,
     mut holding: ResMut<Holding>,
     q_mouse: Query<&MousePosWorld>,
-    mut q_square: Query<(
-        &mut ClickDuration,
-        &mut Transform,
-        &SquareCoordinates,
-        &Square,
-    )>,
+    mut q_square: Query<(&mut Click, &mut Transform, &SquareCoordinates, &Square)>,
 ) {
-    let (mut stopwatch, _, square_coordinates, square) = q_square.single_mut();
+    let (mut click, _, square_coordinates, square) = q_square.single_mut();
     let mouse = *q_mouse.single();
-
-    if buttons.just_pressed(MouseButton::Left) {
-        info!("clicked 1");
-        info!(
-            "{} / {}, {} / {}",
-            mouse.x, mouse.y, square_coordinates.0.x, square_coordinates.0.y
-        );
-        info!("{}", square.size);
-    }
 
     if validate_location(mouse.x, square_coordinates.0.x, square.size.x)
         && validate_location(mouse.y, square_coordinates.0.y, square.size.y)
@@ -50,24 +35,19 @@ pub fn handle_clicking(
         }
 
         if buttons.just_pressed(MouseButton::Left) {
-            stopwatch.time.reset();
-            info!("clicked")
+            click.time.reset();
         }
 
         if buttons.pressed(MouseButton::Left) {
-            stopwatch.time.tick(time.delta());
+            click.time.tick(time.delta());
 
-            info!("{}", stopwatch.time.elapsed_secs());
-
-            if stopwatch.time.elapsed_secs() > 0.5 && !holding.0 {
+            if click.time.elapsed_secs() > 0.5 && !holding.0 {
+                click.offset = get_click_offset(square_coordinates.0.truncate(), mouse.truncate());
                 holding.0 = true;
             }
         }
-        if buttons.just_released(MouseButton::Left)
-            && stopwatch.time.elapsed_secs() < 0.5
-            && !holding.0
+        if buttons.just_released(MouseButton::Left) && click.time.elapsed_secs() < 0.5 && !holding.0
         {
-            info!("x: {}, y: {}", mouse.x, mouse.y);
             counter.count += 1;
         }
     }
@@ -79,23 +59,19 @@ fn validate_location(pos: f32, coord: f32, size: f32) -> bool {
     pos <= coord + halfs && pos >= coord - halfs
 }
 
-// pub fn cursor_system(
-//     windows: Res<Windows>,
-//     q_camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
-// ) -> Option<Vec2> {
-//     let (camera, camera_transform) = q_camera.single();
+fn get_click_offset(square_coordinates: Vec2, mouse_coordinates: Vec2) -> Vec2 {
+    // let x_offset = (square_coordinates.x - mouse_coordinates.x).abs();
+    // let y_offset = (square_coordinates.y - mouse_coordinates.y).abs();
 
-//     let wnd = windows.get_primary().unwrap();
+    let x_offset = match mouse_coordinates.x > square_coordinates.x {
+        true => -(square_coordinates.x - mouse_coordinates.x).abs(),
+        false => (square_coordinates.x - mouse_coordinates.x).abs(),
+    };
 
-//     if let Some(screen_pos) = wnd.cursor_position() {
-//         let window_size = Vec2::new(wnd.width() as f32, wnd.height() as f32);
-//         let ndc = (screen_pos / window_size) * 2.0 - Vec2::ONE;
-//         let ndc_to_world = camera_transform.compute_matrix() * camera.projection_matrix().inverse();
-//         let world_pos = ndc_to_world.project_point3(ndc.extend(-1.0));
-//         let world_pos: Vec2 = world_pos.truncate();
+    let y_offset = match mouse_coordinates.y > square_coordinates.y {
+        true => -(square_coordinates.y - mouse_coordinates.y).abs(),
+        false => (square_coordinates.y - mouse_coordinates.y).abs(),
+    };
 
-//         return Some(world_pos);
-//     }
-
-//     None
-// }
+    Vec2::new(x_offset, y_offset)
+}
