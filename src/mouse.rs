@@ -1,10 +1,11 @@
-use bevy::{prelude::*, time::Stopwatch};
-use bevy_mouse_tracking_plugin::MousePosWorld;
-
 use crate::{
     square::{Square, SquareCoordinates},
     Counter,
 };
+use bevy::{prelude::*, time::Stopwatch};
+use bevy_mouse_tracking_plugin::MousePosWorld;
+
+const HOLD_TIME_THRESHOLD: f32 = 0.3;
 
 #[derive(Component)]
 pub struct Click {
@@ -41,12 +42,14 @@ pub fn handle_clicking(
         if buttons.pressed(MouseButton::Left) {
             click.time.tick(time.delta());
 
-            if click.time.elapsed_secs() > 0.5 && !holding.0 {
+            if click.time.elapsed_secs() > HOLD_TIME_THRESHOLD && !holding.0 {
                 click.offset = get_click_offset(square_coordinates.0.truncate(), mouse.truncate());
                 holding.0 = true;
             }
         }
-        if buttons.just_released(MouseButton::Left) && click.time.elapsed_secs() < 0.5 && !holding.0
+        if buttons.just_released(MouseButton::Left)
+            && click.time.elapsed_secs() < HOLD_TIME_THRESHOLD
+            && !holding.0
         {
             counter.count += 1;
         }
@@ -60,9 +63,6 @@ fn validate_location(pos: f32, coord: f32, size: f32) -> bool {
 }
 
 fn get_click_offset(square_coordinates: Vec2, mouse_coordinates: Vec2) -> Vec2 {
-    // let x_offset = (square_coordinates.x - mouse_coordinates.x).abs();
-    // let y_offset = (square_coordinates.y - mouse_coordinates.y).abs();
-
     let x_offset = match mouse_coordinates.x > square_coordinates.x {
         true => -(square_coordinates.x - mouse_coordinates.x).abs(),
         false => (square_coordinates.x - mouse_coordinates.x).abs(),
