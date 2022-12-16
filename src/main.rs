@@ -2,7 +2,7 @@ use bevy::{prelude::*, time::FixedTimestep};
 use bevy_mouse_tracking_plugin::prelude::MousePosPlugin;
 use square_dragger::mouse::{handle_clicking, Holding};
 use square_dragger::square::handle_moving;
-use square_dragger::{setup, update_counter_text, Counter};
+use square_dragger::{screen_to_world_system, setup, update_counter_text, Counter};
 
 const TIMESTEP: f64 = 1. / 60.0;
 
@@ -29,5 +29,6 @@ fn main() {
         )
         .add_system(update_counter_text)
         .add_system(bevy::window::close_on_esc)
+        .add_system(screen_to_world_system)
         .run();
 }

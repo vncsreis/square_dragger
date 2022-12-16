@@ -1,5 +1,8 @@
 pub mod mouse;
 pub mod square;
+pub mod wall;
+
+use bevy_mouse_tracking_plugin::MousePos;
 
 use crate::mouse::Click;
 use crate::square::{Square, SquareCoordinates};
@@ -78,4 +81,35 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 pub fn update_counter_text(counter: Res<Counter>, mut query: Query<&mut Text>) {
     let mut text = query.single_mut();
     text.sections[1].value = counter.count.to_string();
+}
+
+pub fn screen_to_world(position: Vec2, camera_transform: &Transform, window: &Window) -> Vec3 {
+    let center = camera_transform.translation.truncate();
+    let half_width = (window.width() / 2.0) * camera_transform.scale.x;
+    let half_height = (window.height() / 2.0) * camera_transform.scale.y;
+    let left = center.x - half_width;
+    let bottom = center.y - half_height;
+
+    Vec3::new(
+        left + position.x * camera_transform.scale.x,
+        bottom + position.y * camera_transform.scale.y,
+        0.0,
+    )
+}
+
+pub fn screen_to_world_system(
+    windows: Res<Windows>,
+    buttons: Res<Input<MouseButton>>,
+    q_camera: Query<&Transform, With<Camera>>,
+    q_mouse: Query<&MousePos>,
+) {
+    let window = windows.get_primary().unwrap();
+    let camera_transform = q_camera.single();
+    let mouse = q_mouse.single();
+
+    let position = Vec2::new(mouse.x, mouse.y);
+
+    if buttons.just_pressed(MouseButton::Right) {
+        println!("{}", screen_to_world(position, camera_transform, window));
+    }
 }
